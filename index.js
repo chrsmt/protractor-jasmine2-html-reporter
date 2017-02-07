@@ -44,11 +44,11 @@ function escapeInvalidHtmlChars (str) {
         .replace(/'/g, '&#039;')
 }
 
-function getQualifiedFilename (path, filename, separator) {
-  if (path && path.substr(-1) !== separator && filename.substr(0) !== separator) {
-    path += separator
+function getQualifiedFilename (dir, filename, separator) {
+  if (dir && dir.substr(-1) !== separator && filename.substr(0) !== separator) {
+    dir += separator
   }
-  return path + filename
+  return dir + filename
 }
 
 function log (str) {
@@ -378,20 +378,19 @@ function Jasmine2HTMLReporter (options) {
 
   self.writeFile = function (filename, text) {
     var errors = []
-    var path = self.savePath
+    var dir = self.savePath
 
-    function phantomWrite (path, filename, text) {
+    function phantomWrite (dir, filename, text) {
       // turn filename into a qualified path
-      filename = getQualifiedFilename(path, filename, window.fs_path_separator)
+      filename = getQualifiedFilename(dir, filename, window.fs_path_separator)
       // write via a method injected by phantomjs-testrunner.js
       __phantom_writeFile(filename, text)
     }
 
-    function nodeWrite (path, filename, text) {
+    function nodeWrite (dir, filename, text) {
       var fs = require('fs')
-      var nodejsPath = require('path')
-      require('mkdirp').sync(path) // make sure the path exists
-      var filepath = nodejsPath.join(path, filename)
+      require('mkdirp').sync(dir) // make sure the dir exists
+      var filepath = path.join(dir, filename)
       var htmlfile = fs.openSync(filepath, 'w')
       fs.writeSync(htmlfile, text, 0)
       fs.closeSync(htmlfile)
@@ -400,16 +399,16 @@ function Jasmine2HTMLReporter (options) {
     // Attempt writing with each possible environment.
      // Track errors in case no write succeeds
     try {
-      phantomWrite(path, filename, text)
+      phantomWrite(dir, filename, text)
       return
     } catch (e) { errors.push('  PhantomJs attempt: ' + e.message) }
     try {
-      nodeWrite(path, filename, text)
+      nodeWrite(dir, filename, text)
       return
     } catch (f) { errors.push('  NodeJS attempt: ' + f.message) }
 
         // If made it here, no write succeeded.  Let user know.
-    log("Warning: writing html report failed for '" + path + "', '" +
+    log("Warning: writing html report failed for '" + dir + "', '" +
             filename + "'. Reasons:\n" +
             errors.join('\n')
         )
