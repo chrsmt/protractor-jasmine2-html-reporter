@@ -77,6 +77,40 @@ function rmdir (dir) {
   } catch (e) { log('problem trying to remove a folder:' + dir) }
 }
 
+function copyFile (source, target, cb) {
+  var cbCalled = false
+
+  var rd = fs.createReadStream(source)
+  rd.on('error', done)
+
+  var wr = fs.createWriteStream(target)
+  wr.on('error', done)
+  wr.on('close', function (ex) {
+    done()
+  })
+  rd.pipe(wr)
+
+  function done (err) {
+    if (!cbCalled) {
+      cb(err)
+      cbCalled = true
+    }
+  }
+}
+
+function moveCss (dir) {
+  // move css file
+  // var filepath = nodeJsPath.join(path, filename)
+  var cssFile = path.join(__dirname, 'style.css')
+  var reportCssFile = path.join(dir, 'style.css')
+
+  copyFile(cssFile, reportCssFile, function (err) {
+    if (err) {
+      throw new Error('Unable to copy CSS:', err)
+    }
+  })
+}
+
 function getReportDate () {
   if (reportDate === undefined) {
     reportDate = new Date()
@@ -166,7 +200,7 @@ function Jasmine2HTMLReporter (options) {
     exportObject.startTime = new Date()
     self.started = true
 
-        // Delete previous reports unless cleanDirectory is false
+    // Delete previous reports unless cleanDirectory is false
     if (self.cleanDestination) {
       rmdir(self.savePath)
     }
@@ -191,7 +225,7 @@ function Jasmine2HTMLReporter (options) {
 
   self.specStarted = function (spec) {
     if (!currentSuite) {
-            // focused spec (fit) -- suiteStarted was never called
+      // focused spec (fit) -- suiteStarted was never called
       self.suiteStarted(fakeFocusedSuite)
     }
     spec = getSpec(spec)
@@ -237,7 +271,7 @@ function Jasmine2HTMLReporter (options) {
   self.suiteDone = function (suite) {
     suite = getSuite(suite)
     if (suite._parent === UNDEFINED) {
-            // disabled suite (xdescribe) -- suiteStarted was never called
+      // disabled suite (xdescribe) -- suiteStarted was never called
       self.suiteStarted(suite)
     }
     suite._endTime = new Date()
@@ -246,7 +280,7 @@ function Jasmine2HTMLReporter (options) {
 
   self.jasmineDone = function () {
     if (currentSuite) {
-            // focused spec (fit) -- suiteDone was never called
+      // focused spec (fit) -- suiteDone was never called
       self.suiteDone(fakeFocusedSuite)
     }
 
@@ -258,7 +292,8 @@ function Jasmine2HTMLReporter (options) {
     if (output) {
       wrapOutputAndWriteFile(getReportFilename(), output)
     }
-        // log("Specs skipped but not reported (entire suite skipped or targeted to specific specs)", totalSpecsDefined - totalSpecsExecuted + totalSpecsDisabled);
+    // log("Specs skipped but not reported (entire suite skipped or targeted to
+    // specific specs)", totalSpecsDefined - totalSpecsExecuted + totalSpecsDisabled);
 
     self.finished = true
         // this is so phantomjs-testrunner.js can tell if we're done executing
@@ -379,6 +414,9 @@ function Jasmine2HTMLReporter (options) {
   self.writeFile = function (filename, text) {
     var errors = []
     var dir = self.savePath
+
+    // move css into report directory
+    moveCss(dir)
 
     function phantomWrite (dir, filename, text) {
       // turn filename into a qualified path
