@@ -1,0 +1,108 @@
+html, body {
+    margin: 0px;
+    padding: 0px;
+}
+body {
+    font-family: 'Roboto Condensed', sans-serif;
+    background-color: #fafafa;
+}
+#summary {
+    width: 100%;
+    z-index:999;
+    position: fixed;
+    top: 0;
+    box-shadow: 0px 0px 10px 3px #333;
+}
+#summaryTitle {
+    background: linear-gradient(#2849b1, #0d287f);
+    color: #fff;
+    width: 100%;
+    padding: 1em 2em;
+}
+#summaryTitle h1 {
+    margin: 0px;
+    font-size: 1.5em;
+}
+#summaryTitle img {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+}
+#summaryStats {
+    background: #a7a8aa;
+    color: #111;
+    width: 100%;
+    padding: 1em 2em;
+}
+#specDetails {
+    margin-top: 140px;
+}
+.suite {
+    width: 96%;
+    overflow: auto;
+    margin: 1em 0em;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid #777;
+    background: #fff;
+    /*border-radius: 4px;*/
+}
+.suite .stats {
+    margin: 0;
+    width: 90%;
+    padding: 0;
+}
+.suite .stats li {
+    display: inline;
+    list-style-type: none;
+    padding-right: 20px;
+}
+.suite h2 {
+    margin: 0;
+}
+.suite header {
+    margin: 0;
+    padding: .5em 1em;
+    background: #53565a;
+    color: white;
+    border-bottom: 1px solid #888;
+    /*border-radius: 0px 0px 8px 8px;*/
+}
+.spec {
+    width: 100%;
+    overflow: auto;
+    border-bottom: 1px solid #e5e5e5;
+}
+.spec:hover {
+    background: #e3e3e3;
+}
+.spec h3 {
+    margin: 5px 0px;
+}
+.spec .description {
+    margin: 1% 2%;
+    width: 65%;
+    float: left;
+}
+.spec .resume {
+    width: 29%;
+    margin: 1%;
+    float: left;
+    text-align: center;
+}
+.screenshot {
+    border: 1px solid #bbb;
+    box-shadow: 2px 2px 2px #888888;
+}
+.total {
+    color: #0d95bf;
+}
+.passed {
+    color: #2c9e08;
+}
+.skipped {
+    color: #f9c708;
+}
+.failed {
+    color: #d00e0e;
+}
