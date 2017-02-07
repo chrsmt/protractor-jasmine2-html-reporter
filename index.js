@@ -10,17 +10,22 @@ require('string.prototype.startswith')
 var UNDEFINED
 var exportObject = exports
 var reportDate
+var summaryStats = {
+  suite: 0,
+  specs: 0,
+  passed: 0,
+  failed: 0,
+  skipped: 0,
+  disabled: 0
+}
 
 function sanitizeFilename (name) {
   name = name.replace(/\s+/gi, '-') // Replace white space with dash
   return name.replace(/[^a-zA-Z0-9\-]/gi, '') // Strip any special charactere
 }
-
 // function trim (str) { return str.replace(/^\s+/, '').replace(/\s+$/, '') }// not used
 function elapsed (start, end) { return (end - start) / 1000 }
-function isFailed (obj) { return obj.status === 'failed' }
-function isSkipped (obj) { return obj.status === 'pending' }
-function isDisabled (obj) { return obj.status === 'disabled' }
+function isFailed (obj) { return obj.status === 'failed' }// can get rid of this by updating screenshot logic
 function parseDecimalRoundAndFixed (num, dec) {
   var d = Math.pow(10, dec)
   return isNaN((Math.round(num * d) / d).toFixed(dec)) === true ? 0 : (Math.round(num * d) / d).toFixed(dec)
@@ -111,13 +116,14 @@ function moveCss (dir) {
   })
 }
 
+// TODO: add arguments for formatting date/day/etc.
 function getReportDate () {
   if (reportDate === undefined) {
     reportDate = new Date()
   }
-  return reportDate.getFullYear() + '' +
-            (reportDate.getMonth() + 1) +
-            reportDate.getDate() + ' ' +
+  return reportDate.getFullYear() + '-' +
+            ('0' + (reportDate.getMonth() + 1)).slice(-2) + '-' +
+            ('0' + reportDate.getDate()).slice(-2) + ' ' +
             reportDate.getHours() + '' +
             reportDate.getMinutes() + '' +
             reportDate.getSeconds() + ',' +
@@ -146,9 +152,11 @@ function Jasmine2HTMLReporter (options) {
   self.fileName = options.fileName === UNDEFINED ? 'htmlReport' : options.fileName
   self.cleanDestination = options.cleanDestination === UNDEFINED ? true : options.cleanDestination
   self.showPassed = options.showPassed === UNDEFINED ? true : options.showPassed
+  self.logo = options.logo === UNDEFINED ? false : options.logo
 
   var suites = []
   var currentSuite = null
+
   var totalSpecsExecuted = 0
   var totalSpecsDefined
 
@@ -237,14 +245,32 @@ function Jasmine2HTMLReporter (options) {
   self.specDone = function (spec) {
     spec = getSpec(spec)
     spec._endTime = new Date()
-    if (isSkipped(spec)) { spec._suite._skipped++ }
-    if (isDisabled(spec)) { spec._suite._disabled++ }
-    if (isFailed(spec)) { spec._suite._failures++ }
+
+    switch (spec.status) {
+      case 'passed':
+        summaryStats.passed++
+        break
+      case 'pending':
+        spec._suite._skipped++
+        summaryStats.skipped++
+        break
+      case 'disabled':
+        spec._suite._disabled++
+        summaryStats.disabled++
+        break
+      case 'failed':
+        spec._suite._failures++
+        summaryStats.failed++
+        break
+      default:
+        throw new Error('Unable to handle spec status:', spec.status)
+    }
+
     totalSpecsExecuted++
 
     // Take screenshots taking care of the configuration
     if ((self.takeScreenshots && !self.takeScreenshotsOnlyOnFailures) ||
-            (self.takeScreenshots && self.takeScreenshotsOnlyOnFailures && isFailed(spec))) {
+      (self.takeScreenshots && self.takeScreenshotsOnlyOnFailures && isFailed(spec))) {
       if (!self.fixedScreenshotName) {
         spec.screenshot = hat() + '.png'
       } else {
@@ -255,8 +281,7 @@ function Jasmine2HTMLReporter (options) {
         var screenshotPath = path.join(
                     self.savePath,
                     self.screenshotsFolder,
-                    spec.screenshot
-                )
+                    spec.screenshot)
 
         mkdirp(path.dirname(screenshotPath), function (err) {
           if (err) {
@@ -288,15 +313,15 @@ function Jasmine2HTMLReporter (options) {
     for (var i = 0; i < suites.length; i++) {
       output += self.getOrWriteNestedOutput(suites[i])
     }
-        // if we have anything to write here, write out the consolidated file
+    // if we have anything to write here, write out the consolidated file
     if (output) {
       wrapOutputAndWriteFile(getReportFilename(), output)
     }
-    // log("Specs skipped but not reported (entire suite skipped or targeted to
-    // specific specs)", totalSpecsDefined - totalSpecsExecuted + totalSpecsDisabled);
+    // log('Specs skipped but not reported (entire suite skipped or targeted to
+    // specific specs)', totalSpecsDefined - totalSpecsExecuted + totalSpecsDisabled);
 
     self.finished = true
-        // this is so phantomjs-testrunner.js can tell if we're done executing
+    // this is so phantomjs-testrunner.js can tell if we're done executing
     exportObject.endTime = new Date()
   }
 
@@ -308,13 +333,13 @@ function Jasmine2HTMLReporter (options) {
     if (self.consolidateAll || self.consolidate && suite._parent) {
       return output
     } else {
-            // if we aren't supposed to consolidate output, just write it now
+      // if we aren't supposed to consolidate output, just write it now
       wrapOutputAndWriteFile(generateFilename(suite), output)
       return ''
     }
   }
 
-  /** ****** Helper functions with closure access for simplicity ********/
+  // helper functions with closure access for simplicity
   function generateFilename (suite) {
     return getReportFilename(getFullyQualifiedSuiteName(suite, true))
   }
@@ -356,14 +381,15 @@ function Jasmine2HTMLReporter (options) {
   }
 
   function suiteAsHtml (suite) {
-    var html = '<article class="suite">'
-    html += '<header>'
-    html += '<h2>' + getFullyQualifiedSuiteName(suite) + ' - ' + elapsed(suite._startTime, suite._endTime) + 's</h2>'
-    html += '<ul class="stats">'
-    html += '<li>Tests: <strong>' + suite._specs.length + '</strong></li>'
-    html += '<li>Skipped: <strong>' + suite._skipped + '</strong></li>'
-    html += '<li>Failures: <strong>' + suite._failures + '</strong></li>'
-    html += '</ul> </header>'
+    var html = '\n<article class="suite">\n'
+    html += '<header>\n'
+    html += '<h2>' + getFullyQualifiedSuiteName(suite) + ' - ' +
+      elapsed(suite._startTime, suite._endTime) + 's</h2>'
+    html += '<ul class="stats">\n'
+    html += '<li>Tests: <strong>' + suite._specs.length + '</strong></li>\n'
+    html += '<li>Skipped: <strong>' + suite._skipped + '</strong></li>\n'
+    html += '<li>Failures: <strong>' + suite._failures + '</strong></li>\n'
+    html += '</ul>\n</header>\n'
 
     for (var i = 0; i < suite._specs.length; i++) {
       var spec = suite._specs[i]
@@ -372,41 +398,44 @@ function Jasmine2HTMLReporter (options) {
       html += '<div class="resume">'
       if (spec.screenshot !== UNDEFINED) {
         html += '<a href="' + self.screenshotsFolder + spec.screenshot + '">'
-        html += '<img src="' + self.screenshotsFolder + spec.screenshot + '" width="100" height="100" />'
+        html += '<img src="' + self.screenshotsFolder + spec.screenshot +
+          '" class="screenshot" width="100" height="100" />'
         html += '</a>'
       }
       html += '<br />'
       var numTests = spec.failedExpectations.length + spec.passedExpectations.length
       var percentage = (spec.passedExpectations.length * 100) / numTests
-      html += '<span>Tests passed: ' + parseDecimalRoundAndFixed(percentage, 2) + '%</span><br /><progress max="100" value="' + Math.round(percentage) + '"></progress>'
-      html += '</div>'
-      html += '</div>'
+      html += '<span>Tests passed: ' + parseDecimalRoundAndFixed(percentage, 2) +
+        '%</span><br /><progress max="100" value="' + Math.round(percentage) + '"></progress>'
+      html += '</div>\n'
+      html += '</div>\n'
     }
-    html += '\n </article>'
+    html += '\n</article>\n'
     return html
   }
   function specAsHtml (spec) {
-    var html = '<div class="description">'
-    html += '<h3>' + escapeInvalidHtmlChars(spec.description) + ' - ' + elapsed(spec._startTime, spec._endTime) + 's</h3>'
+    var html = '<div class="description">\n'
+    html += '<h3>' + escapeInvalidHtmlChars(spec.description) + ' - ' +
+      elapsed(spec._startTime, spec._endTime) + 's</h3>\n'
 
     if (spec.failedExpectations.length > 0 || spec.passedExpectations.length > 0) {
       html += '<ul>'
       _.each(spec.failedExpectations, function (expectation) {
         html += '<li>'
         html += expectation.message + '<span style="padding:0 1em;color:red;">&#10007;</span>'
-        html += '</li>'
+        html += '</li>\n'
       })
       if (self.showPassed === true) {
         _.each(spec.passedExpectations, function (expectation) {
           html += '<li>'
           html += expectation.message + '<span style="padding:0 1em;color:green;">&#10003;</span>'
-          html += '</li>'
+          html += '</li>\n'
         })
       }
-      html += '</ul></div>'
+      html += '</ul>\n</div>\n'
     } else {
-      html += '<span style="padding:0 1em;color:orange;">***Skipped***</span>'
-      html += '</div>'
+      html += '<span class="skipped">***Skipped***</span>'
+      html += '</div>\n'
     }
     return html
   }
@@ -426,16 +455,16 @@ function Jasmine2HTMLReporter (options) {
     }
 
     function nodeWrite (dir, filename, text) {
-      var fs = require('fs')
-      require('mkdirp').sync(dir) // make sure the dir exists
-      var filepath = path.join(dir, filename)
-      var htmlfile = fs.openSync(filepath, 'w')
+      require('mkdirp').sync(dir) // make sure the path exists
+      var filePath = path.join(dir, filename)
+      var htmlfile = fs.openSync(filePath, 'w')
       fs.writeSync(htmlfile, text, 0)
       fs.closeSync(htmlfile)
       return
     }
+
     // Attempt writing with each possible environment.
-     // Track errors in case no write succeeds
+    // Track errors in case no write succeeds
     try {
       phantomWrite(dir, filename, text)
       return
@@ -452,14 +481,32 @@ function Jasmine2HTMLReporter (options) {
         )
   }
 
-    // To remove complexity and be more DRY about the silly preamble and <testsuites> element
-  var prefix = '<!DOCTYPE html><html><head lang=en><meta charset=UTF-8><title>Test Report -  ' + getReportDate() + '</title><style>body{font-family:"open_sans",sans-serif}.suite{width:100%;overflow:auto}.suite .stats{margin:0;width:90%;padding:0}.suite .stats li{display:inline;list-style-type:none;padding-right:20px}.suite h2{margin:0}.suite header{margin:0;padding:5px 0 5px 5px;background:#003d57;color:white}.spec{width:100%;overflow:auto;border-bottom:1px solid #e5e5e5}.spec:hover{background:#e8f3fb}.spec h3{margin:5px 0}.spec .description{margin:1% 2%;width:65%;float:left}.spec .resume{width:29%;margin:1%;float:left;text-align:center}</style></head>'
-  prefix += '<body><section>'
-  var suffix = '\n</section></body></html>'
+  function writeHtmlPrefix () {
+    var prefix = '<!DOCTYPE html><html><head lang=en><meta charset=UTF-8>\n' +
+      '<title>Test Report -  ' + getReportDate() + '</title>\n' +
+      '<link rel="stylesheet" type="text/css" href="style.css"></head>\n' +
+      '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n'
+    prefix += '<body>\n<div id="summary">\n<div id="summaryTitle"><h1>Test Results - ' + getReportDate() + '</h1>'
+    // insert custom logo if provided in options
+    if (options.logo) {
+      prefix += '<img src="' + options.logo.url +
+          '" width="' + options.logo.width +
+          '" height="' + options.logo.height + '" />'
+    }
+    prefix += '</div>\n<div id="summaryStats"><strong>Total Specs: <span class=total>' + totalSpecsExecuted +
+      '</span></strong> [Passed: <span class=passed>' + summaryStats.passed +
+      '</span>] [Skipped: <span class=skipped>' + summaryStats.skipped +
+      '</span>] [Failed: <span class=failed>' + summaryStats.failed +
+      '</span>]</div>\n</div>\n\n<section id="specDetails">'
+
+    return prefix
+  }
+
+  var suffix = '\n</section>\n</body>\n</html>'
 
   function wrapOutputAndWriteFile (filename, text) {
     if (filename.substr(-5) !== '.html') { filename += '.html' }
-    self.writeFile(filename, (prefix + text + suffix))
+    self.writeFile(filename, (writeHtmlPrefix() + text + suffix))
   }
 
   return this
