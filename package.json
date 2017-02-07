@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "jasmine": "^2.5.2",
-    "phantomjs": "^2.1.7"
+    "phantomjs": "^2.1.7",
+    "protractor": "^5.1.1"
   }
 }
