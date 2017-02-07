@@ -11,7 +11,7 @@ var UNDEFINED
 var exportObject = exports
 var reportDate
 var summaryStats = {
-  suite: 0,
+  suites: 0,
   specs: 0,
   passed: 0,
   failed: 0,
@@ -229,6 +229,7 @@ function Jasmine2HTMLReporter (options) {
       currentSuite._suites.push(suite)
     }
     currentSuite = suite
+    summaryStats.suites++
   }
 
   self.specStarted = function (spec) {
@@ -405,7 +406,7 @@ function Jasmine2HTMLReporter (options) {
       html += '<br />'
       var numTests = spec.failedExpectations.length + spec.passedExpectations.length
       var percentage = (spec.passedExpectations.length * 100) / numTests
-      html += '<span>Tests passed: ' + parseDecimalRoundAndFixed(percentage, 2) +
+      html += '<span>Steps passed: ' + parseDecimalRoundAndFixed(percentage, 2) +
         '%</span><br /><progress max="100" value="' + Math.round(percentage) + '"></progress>'
       html += '</div>\n'
       html += '</div>\n'
@@ -493,11 +494,12 @@ function Jasmine2HTMLReporter (options) {
           '" width="' + options.logo.width +
           '" height="' + options.logo.height + '" />'
     }
-    prefix += '</div>\n<div id="summaryStats"><strong>Total Specs: <span class=total>' + totalSpecsExecuted +
-      '</span></strong> [Passed: <span class=passed>' + summaryStats.passed +
-      '</span>] [Skipped: <span class=skipped>' + summaryStats.skipped +
-      '</span>] [Failed: <span class=failed>' + summaryStats.failed +
-      '</span>]</div>\n</div>\n\n<section id="specDetails">'
+    prefix += '</div>\n<div id="summaryStats">SUITES:' + summaryStats.suites +
+      ' <strong>Total Tests: <span class=total>' + totalSpecsExecuted +
+      '</span></strong> [ Passed: <span class=passed>' + summaryStats.passed +
+      '</span> ] [ Skipped: <span class=skipped>' + summaryStats.skipped +
+      '</span> ] [ Failed: <span class=failed>' + summaryStats.failed +
+      '</span> ] </div>\n</div>\n\n<section id="specDetails">'
 
     return prefix
   }
