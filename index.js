@@ -4,12 +4,16 @@ var _ = require('lodash')
 var path = require('path')
 // var async = require('async')// not used
 var hat = require('hat')
+var formatDate = require('./formatDate')
 
 require('string.prototype.startswith')
 
 var UNDEFINED
 var exportObject = exports
-var reportDate
+var timestamp = new Date()
+var fileDate = formatDate(timestamp, { format: 'filename' })
+var titleDate = formatDate(timestamp, { format: 'title' })
+
 var summaryStats = {
   suites: 0,
   specs: 0,
@@ -116,20 +120,6 @@ function moveCss (dir) {
   })
 }
 
-// TODO: add arguments for formatting date/day/etc.
-function getReportDate () {
-  if (reportDate === undefined) {
-    reportDate = new Date()
-  }
-  return reportDate.getFullYear() + '-' +
-            ('0' + (reportDate.getMonth() + 1)).slice(-2) + '-' +
-            ('0' + reportDate.getDate()).slice(-2) + ' ' +
-            reportDate.getHours() + '' +
-            reportDate.getMinutes() + '' +
-            reportDate.getSeconds() + ',' +
-            reportDate.getMilliseconds()
-}
-
 function Jasmine2HTMLReporter (options) {
   var self = this
 
@@ -197,7 +187,7 @@ function Jasmine2HTMLReporter (options) {
     }
 
     if (self.fileNameDateSuffix) {
-      name += self.fileNameSeparator + getReportDate()
+      name += self.fileNameSeparator + fileDate
     }
 
     return name
@@ -484,17 +474,17 @@ function Jasmine2HTMLReporter (options) {
 
   function writeHtmlPrefix () {
     var prefix = '<!DOCTYPE html><html><head lang=en><meta charset=UTF-8>\n' +
-      '<title>Test Report -  ' + getReportDate() + '</title>\n' +
+      '<title>Test Report -  ' + fileDate + '</title>\n' +
       '<link rel="stylesheet" type="text/css" href="style.css"></head>\n' +
       '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n'
-    prefix += '<body>\n<div id="summary">\n<div id="summaryTitle"><h1>Test Results - ' + getReportDate() + '</h1>'
+    prefix += '<body>\n<div id="summary">\n<div id="summaryTitle"><strong>Test Results</strong> ' + titleDate
     // insert custom logo if provided in options
     if (options.logo) {
       prefix += '<img src="' + options.logo.url +
           '" width="' + options.logo.width +
           '" height="' + options.logo.height + '" />'
     }
-    prefix += '</div>\n<div id="summaryStats">SUITES:' + summaryStats.suites +
+    prefix += '</div>\n<div id="summaryStats">SUITES: ' + summaryStats.suites +
       ' <strong>Total Tests: <span class=total>' + totalSpecsExecuted +
       '</span></strong> [ Passed: <span class=passed>' + summaryStats.passed +
       '</span> ] [ Skipped: <span class=skipped>' + summaryStats.skipped +
