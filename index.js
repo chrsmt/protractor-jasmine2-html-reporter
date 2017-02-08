@@ -2,18 +2,15 @@ var fs = require('fs')
 var mkdirp = require('mkdirp')
 var _ = require('lodash')
 var path = require('path')
-// var async = require('async')// not used
 var hat = require('hat')
+var fileUtilities = require('./fileUtilities')
 var formatDate = require('./formatDate')
-
-require('string.prototype.startswith')
 
 var UNDEFINED
 var exportObject = exports
 var timestamp = new Date()
 var fileDate = formatDate(timestamp, { format: 'filename' })
 var titleDate = formatDate(timestamp, { format: 'title' })
-
 var summaryStats = {
   suites: 0,
   specs: 0,
@@ -23,11 +20,8 @@ var summaryStats = {
   disabled: 0
 }
 
-function sanitizeFilename (name) {
-  name = name.replace(/\s+/gi, '-') // Replace white space with dash
-  return name.replace(/[^a-zA-Z0-9\-]/gi, '') // Strip any special charactere
-}
-// function trim (str) { return str.replace(/^\s+/, '').replace(/\s+$/, '') }// not used
+require('string.prototype.startswith')
+
 function elapsed (start, end) { return (end - start) / 1000 }
 function isFailed (obj) { return obj.status === 'failed' }// can get rid of this by updating screenshot logic
 function parseDecimalRoundAndFixed (num, dec) {
@@ -44,22 +38,7 @@ function extend (dupe, obj) { // performs a shallow copy of all props of `obj` o
   return dupe
 }
 
-function escapeInvalidHtmlChars (str) {
-  return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-}
-
-function getQualifiedFilename (dir, filename, separator) {
-  if (dir && dir.substr(-1) !== separator && filename.substr(0) !== separator) {
-    dir += separator
-  }
-  return dir + filename
-}
-
+// GET RID OF THIS ONE?
 function log (str) {
   var con = global.console || console
   if (con && con.log) {
@@ -67,53 +46,13 @@ function log (str) {
   }
 }
 
-function rmdir (dir) {
-  try {
-    var list = fs.readdirSync(dir)
-    for (var i = 0; i < list.length; i++) {
-      var filename = path.join(dir, list[i])
-      var stat = fs.statSync(filename)
-
-      if (stat.isDirectory()) {
-                // rmdir recursively
-        rmdir(filename)
-      } else {
-                // rm fiilename
-        fs.unlinkSync(filename)
-      }
-    }
-    fs.rmdirSync(dir)
-  } catch (e) { log('problem trying to remove a folder:' + dir) }
-}
-
-function copyFile (source, target, cb) {
-  var cbCalled = false
-
-  var rd = fs.createReadStream(source)
-  rd.on('error', done)
-
-  var wr = fs.createWriteStream(target)
-  wr.on('error', done)
-  wr.on('close', function (ex) {
-    done()
-  })
-  rd.pipe(wr)
-
-  function done (err) {
-    if (!cbCalled) {
-      cb(err)
-      cbCalled = true
-    }
-  }
-}
-
 function moveCss (dir) {
   // move css file
   // var filepath = nodeJsPath.join(path, filename)
-  var cssFile = path.join(__dirname, 'style.css')
+  var cssFile = path.join(__dirname, 'resources', 'style.css')
   var reportCssFile = path.join(dir, 'style.css')
 
-  copyFile(cssFile, reportCssFile, function (err) {
+  fileUtilities.copyFile(cssFile, reportCssFile, function (err) {
     if (err) {
       throw new Error('Unable to copy CSS:', err)
     }
@@ -200,7 +139,7 @@ function Jasmine2HTMLReporter (options) {
 
     // Delete previous reports unless cleanDirectory is false
     if (self.cleanDestination) {
-      rmdir(self.savePath)
+      fileUtilities.rmdir(self.savePath)
     }
   }
 
@@ -265,7 +204,7 @@ function Jasmine2HTMLReporter (options) {
       if (!self.fixedScreenshotName) {
         spec.screenshot = hat() + '.png'
       } else {
-        spec.screenshot = sanitizeFilename(spec.description) + '.png'
+        spec.screenshot = fileUtilities.sanitizeFilename(spec.description) + '.png'
       }
 
       browser.takeScreenshot().then(function (png) {
@@ -361,7 +300,7 @@ function Jasmine2HTMLReporter (options) {
       }
       return fileName
     } else {
-      return escapeInvalidHtmlChars(fullName)
+      return fileUtilities.escapeInvalidHtmlChars(fullName)
     }
   }
 
@@ -406,7 +345,7 @@ function Jasmine2HTMLReporter (options) {
   }
   function specAsHtml (spec) {
     var html = '<div class="description">\n'
-    html += '<h3>' + escapeInvalidHtmlChars(spec.description) + ' - ' +
+    html += '<h3>' + fileUtilities.escapeInvalidHtmlChars(spec.description) + ' - ' +
       elapsed(spec._startTime, spec._endTime) + 's</h3>\n'
 
     if (spec.failedExpectations.length > 0 || spec.passedExpectations.length > 0) {
@@ -440,7 +379,8 @@ function Jasmine2HTMLReporter (options) {
 
     function phantomWrite (dir, filename, text) {
       // turn filename into a qualified path
-      filename = getQualifiedFilename(dir, filename, window.fs_path_separator)
+      filename = fileUtilities.getQualifiedFilename(dir, filename,
+        window.fs_path_separator)
       // write via a method injected by phantomjs-testrunner.js
       __phantom_writeFile(filename, text)
     }
