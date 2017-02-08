@@ -17,7 +17,24 @@ exports.config = {
       var Jasmine2HtmlReporter = require('./index.js')
 
       jasmine.getEnv().addReporter(new Jasmine2HtmlReporter({
-        savePath: './test/reports/'
+        savePath: './test/reports/' // default: ./
+        // takeScreenshots: false, // default: true
+        // takeScreenshotsOnlyOnFailures: true, // default: false
+        // screenshotsFolder: 'images', // default: screenshots
+        // fixedScreenshotName: true, // default: false
+        // fileNamePrefix: 'Prefix', // default: nothing
+        // consolidate: false, // default: true
+        // consolidateAll: false, // default: true
+        // cleanDestination: false, // default: true
+        // showPassed: false, // default: true
+        // fileNameSeparator: '_', // default: -
+        // fileNameDateSuffix: true, // default: false
+        // logo: {
+        //   url: 'resources/logo.png',
+        //   width: 200,
+        //   height: 30
+        // }
+
       }))
     })
   }
