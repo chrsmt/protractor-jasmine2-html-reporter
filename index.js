@@ -414,10 +414,11 @@ function Jasmine2HTMLReporter (options) {
 
   function writeHtmlPrefix () {
     var prefix = '<!DOCTYPE html><html><head lang=en><meta charset=UTF-8>\n' +
-      '<title>Test Report -  ' + fileDate + '</title>\n' +
+      '<title>Test Report - ' + fileDate + '</title>\n' +
       '<link rel="stylesheet" type="text/css" href="style.css"></head>\n' +
       '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n'
-    prefix += '<body>\n<div id="summary">\n<div id="summaryTitle"><strong>Test Results</strong> ' + titleDate
+    prefix += '<body>\n<div id="summary">\n<div id="summaryTitle"><strong>Test Results</strong> ' +
+      '<span class="date">' + titleDate + '</span>'
     // insert custom logo if provided in options
     if (options.logo) {
       prefix += '<img src="' + options.logo.url +

@@ -91,6 +91,10 @@ body {
     float: left;
     text-align: center;
 }
+.date {
+    font-size: .8em;
+    font-style: italic;
+}
 .screenshot {
     border: 1px solid #bbb;
     box-shadow: 2px 2px 2px #888888;
