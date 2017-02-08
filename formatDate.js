@@ -9,7 +9,7 @@ function formatDate (timestamp, options) {
   var milliseconds = timestamp.getMilliseconds()
 
   // set day name
-  var days = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 
+  var days = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday',
     'Thursday', 'Friday', 'Saturday' ]
   var dayName = days[day]
 
