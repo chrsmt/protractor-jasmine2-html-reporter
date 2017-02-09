@@ -15,7 +15,7 @@ body {
     box-shadow: 0px 0px 10px 3px #333;
 }
 #summaryTitle {
-    background: #0d287f;
+    background: #0d95bf;
     color: #fff;
     width: 100%;
     padding: 1em 2em;
@@ -36,7 +36,7 @@ body {
     padding: 1em 2em;
 }
 #specDetails {
-    margin-top: 140px;
+    margin-top: 150px;
 }
 .suite {
     width: 96%;
@@ -94,6 +94,7 @@ body {
 .date {
     font-size: .8em;
     font-style: italic;
+    margin-left: 1em;
 }
 .screenshot {
     border: 1px solid #bbb;
