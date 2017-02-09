@@ -17,7 +17,7 @@ exports.config = {
       var Jasmine2HtmlReporter = require('./index.js')
 
       jasmine.getEnv().addReporter(new Jasmine2HtmlReporter({
-        savePath: './test/reports/' // default: ./
+        savePath: './test/reports/', // default: ./
         // takeScreenshots: false, // default: true
         // takeScreenshotsOnlyOnFailures: true, // default: false
         // screenshotsFolder: 'images', // default: screenshots
@@ -29,11 +29,13 @@ exports.config = {
         // showPassed: false, // default: true
         // fileNameSeparator: '_', // default: -
         // fileNameDateSuffix: true, // default: false
-        // logo: {
-        //   url: 'resources/logo.png',
-        //   width: 200,
-        //   height: 30
-        // }
+        // title: 'QA Automation Test Results', // default: 'Test Results'
+        // titleBackgroundColor: '#0d287f', // default: nothing
+        logo: {
+          url: '../../resources/sample-logo-white.png',
+          width: 221,
+          height: 65
+        } // default: nothing
 
       }))
     })

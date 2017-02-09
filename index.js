@@ -81,6 +81,8 @@ function Jasmine2HTMLReporter (options) {
   self.fileName = options.fileName === UNDEFINED ? 'htmlReport' : options.fileName
   self.cleanDestination = options.cleanDestination === UNDEFINED ? true : options.cleanDestination
   self.showPassed = options.showPassed === UNDEFINED ? true : options.showPassed
+  self.title = options.title === UNDEFINED ? 'Test Results' : options.title
+  self.titleBackgroundColor = options.titleBackgroundColor === UNDEFINED ? false : options.titleBackgroundColor
   self.logo = options.logo === UNDEFINED ? false : options.logo
 
   var suites = []
@@ -208,16 +210,14 @@ function Jasmine2HTMLReporter (options) {
       }
 
       browser.takeScreenshot().then(function (png) {
-        var screenshotPath = path.join(
-                    self.savePath,
-                    self.screenshotsFolder,
-                    spec.screenshot)
-
+        var screenshotPath = path.join(self.savePath, self.screenshotsFolder,
+          spec.screenshot)
         mkdirp(path.dirname(screenshotPath), function (err) {
           if (err) {
             throw new Error('Could not create directory for ' + screenshotPath)
           }
           writeScreenshot(png, screenshotPath)
+          console.log('this is the screenshot call')
         })
       })
     }
@@ -308,6 +308,7 @@ function Jasmine2HTMLReporter (options) {
     var stream = fs.createWriteStream(filename)
     stream.write(new Buffer(data, 'base64'))
     stream.end()
+    console.log('this is the function call for', filename)
   }
 
   function suiteAsHtml (suite) {
@@ -413,19 +414,27 @@ function Jasmine2HTMLReporter (options) {
   }
 
   function writeHtmlPrefix () {
+    var titleBackgroundColor = ''
+    var logo = ''
+
+    if (self.titleBackgroundColor) {
+      titleBackgroundColor = ' style="background: ' + options.titleBackgroundColor + ';"'
+    }
+
+    if (self.logo) {
+      logo = '<img src="' + options.logo.url +
+        '" width="' + options.logo.width +
+        '" height="' + options.logo.height + '" />'
+    }
+
     var prefix = '<!DOCTYPE html><html><head lang=en><meta charset=UTF-8>\n' +
       '<title>Test Report - ' + fileDate + '</title>\n' +
       '<link rel="stylesheet" type="text/css" href="style.css"></head>\n' +
-      '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n'
-    prefix += '<body>\n<div id="summary">\n<div id="summaryTitle"><strong>Test Results</strong> ' +
-      '<span class="date">' + titleDate + '</span>'
-    // insert custom logo if provided in options
-    if (options.logo) {
-      prefix += '<img src="' + options.logo.url +
-          '" width="' + options.logo.width +
-          '" height="' + options.logo.height + '" />'
-    }
-    prefix += '</div>\n<div id="summaryStats">SUITES: ' + summaryStats.suites +
+      '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n' +
+      '<body>\n<div id="summary">\n<div id="summaryTitle"' + titleBackgroundColor + '>' +
+      '<h1>' + self.title + '</h1>' +
+      '<span class="date">' + titleDate + '</span>' + logo + '</div>\n' +
+      '<div id="summaryStats">SUITES: ' + summaryStats.suites +
       ' <strong>Total Tests: <span class=total>' + totalSpecsExecuted +
       '</span></strong> [ Passed: <span class=passed>' + summaryStats.passed +
       '</span> ] [ Skipped: <span class=skipped>' + summaryStats.skipped +
