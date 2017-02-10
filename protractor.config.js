@@ -30,12 +30,16 @@ exports.config = {
         // fileNameSeparator: '_', // default: -
         // fileNameDateSuffix: true, // default: false
         // title: 'QA Automation Test Results', // default: 'Test Results'
-        // titleBackgroundColor: '#0d287f', // default: nothing
-        logo: {
-          url: '../../resources/sample-logo-white.png',
-          width: 221,
-          height: 65
-        } // default: nothing
+        // titleColors: {
+        //   text: '#ededed',
+        //   background: 'radial-gradient(farthest-corner at 10% 3%, #0d95bf, #154473)'
+        // }, // supports any css declaration that can be passed to 'background'
+        // default: nothing --NEED TO CHANGE TO SET DEFAULTS IF MISSING OPTIONS
+        // logo: {
+        //   url: '../../resources/sample-logo-white.png', // url or path relative to report location
+        //   width: 221,
+        //   height: 65
+        // } // default: nothing --NEED TO CHANGE TO SET DEFAULTS IF MISSING OPTIONS
 
       }))
     })

@@ -11,13 +11,14 @@ var exportObject = exports
 var timestamp = new Date()
 var fileDate = formatDate(timestamp, { format: 'filename' })
 var titleDate = formatDate(timestamp, { format: 'title' })
-var summaryStats = {
+var summary = {
   suites: 0,
   specs: 0,
   passed: 0,
   failed: 0,
   skipped: 0,
-  disabled: 0
+  disabled: 0,
+  totalTime: 0
 }
 
 require('string.prototype.startswith')
@@ -82,8 +83,8 @@ function Jasmine2HTMLReporter (options) {
   self.cleanDestination = options.cleanDestination === UNDEFINED ? true : options.cleanDestination
   self.showPassed = options.showPassed === UNDEFINED ? true : options.showPassed
   self.title = options.title === UNDEFINED ? 'Test Results' : options.title
-  self.titleBackgroundColor = options.titleBackgroundColor === UNDEFINED ? false : options.titleBackgroundColor
-  self.logo = options.logo === UNDEFINED ? false : options.logo
+  self.titleColors = options.titleColors === UNDEFINED ? false : options.titleColors // handle missing options!!!
+  self.logo = options.logo === UNDEFINED ? false : options.logo // handle missing options!!!
 
   var suites = []
   var currentSuite = null
@@ -150,7 +151,8 @@ function Jasmine2HTMLReporter (options) {
     suite._startTime = new Date()
     suite._specs = []
     suite._suites = []
-    suite._failures = 0
+    suite._passed = 0
+    suite._failed = 0
     suite._skipped = 0
     suite._disabled = 0
     suite._parent = currentSuite
@@ -160,7 +162,7 @@ function Jasmine2HTMLReporter (options) {
       currentSuite._suites.push(suite)
     }
     currentSuite = suite
-    summaryStats.suites++
+    summary.suites++
   }
 
   self.specStarted = function (spec) {
@@ -180,19 +182,20 @@ function Jasmine2HTMLReporter (options) {
 
     switch (spec.status) {
       case 'passed':
-        summaryStats.passed++
+        spec._suite._passed++
+        summary.passed++
         break
       case 'pending':
         spec._suite._skipped++
-        summaryStats.skipped++
+        summary.skipped++
         break
       case 'disabled':
         spec._suite._disabled++
-        summaryStats.disabled++
+        summary.disabled++
         break
       case 'failed':
-        spec._suite._failures++
-        summaryStats.failed++
+        spec._suite._failed++
+        summary.failed++
         break
       default:
         throw new Error('Unable to handle spec status:', spec.status)
@@ -312,14 +315,19 @@ function Jasmine2HTMLReporter (options) {
   }
 
   function suiteAsHtml (suite) {
+    // calculate suite end time
+    suite._totalTime = elapsed(suite._startTime, suite._endTime)
+    summary.totalTime += suite._totalTime
+
     var html = '\n<article class="suite">\n'
     html += '<header>\n'
     html += '<h2>' + getFullyQualifiedSuiteName(suite) + ' - ' +
-      elapsed(suite._startTime, suite._endTime) + 's</h2>'
+       suite._totalTime + 's</h2>'
     html += '<ul class="stats">\n'
     html += '<li>Tests: <strong>' + suite._specs.length + '</strong></li>\n'
-    html += '<li>Skipped: <strong>' + suite._skipped + '</strong></li>\n'
-    html += '<li>Failures: <strong>' + suite._failures + '</strong></li>\n'
+    html += '<li>Passed: <strong><span class="passed">' + suite._passed + '</span></strong></li>\n'
+    html += '<li>Failed: <strong><span class="failed">' + suite._failed + '</span></strong></li>\n'
+    html += '<li>Skipped: <strong><span class="skipped">' + suite._skipped + '</span></strong></li>\n'
     html += '</ul>\n</header>\n'
 
     for (var i = 0; i < suite._specs.length; i++) {
@@ -414,11 +422,12 @@ function Jasmine2HTMLReporter (options) {
   }
 
   function writeHtmlPrefix () {
-    var titleBackgroundColor = ''
+    var titleColors = ''
     var logo = ''
 
-    if (self.titleBackgroundColor) {
-      titleBackgroundColor = ' style="background: ' + options.titleBackgroundColor + ';"'
+    if (self.titleColors) {
+      titleColors = ' style="background: ' + options.titleColors.background + '; ' +
+        'color: ' + options.titleColors.text + ';"'
     }
 
     if (self.logo) {
@@ -431,15 +440,17 @@ function Jasmine2HTMLReporter (options) {
       '<title>Test Report - ' + fileDate + '</title>\n' +
       '<link rel="stylesheet" type="text/css" href="style.css"></head>\n' +
       '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n' +
-      '<body>\n<div id="summary">\n<div id="summaryTitle"' + titleBackgroundColor + '>' +
-      '<h1>' + self.title + '</h1>' +
+      '<body>\n<div id="summary">\n<div id="summaryTitle"' + titleColors + '>' +
+      '<h1>' + self.title + '</h1>\n' +
       '<span class="date">' + titleDate + '</span>' + logo + '</div>\n' +
-      '<div id="summaryStats">SUITES: ' + summaryStats.suites +
-      ' <strong>Total Tests: <span class=total>' + totalSpecsExecuted +
-      '</span></strong> [ Passed: <span class=passed>' + summaryStats.passed +
-      '</span> ] [ Skipped: <span class=skipped>' + summaryStats.skipped +
-      '</span> ] [ Failed: <span class=failed>' + summaryStats.failed +
-      '</span> ] </div>\n</div>\n\n<section id="specDetails">'
+      '<div id="summaryStats">\n' +
+      '<div><span>TIME:</span><span class="stat">' + summary.totalTime.toFixed(3) + 's</span></div>\n' +
+      '<div><span>SUITES:</span><span class="stat">' + summary.suites + '</span></div>\n' +
+      '<div><span>TESTS:</span><span class="stat total">' + totalSpecsExecuted + '</span></div>\n' +
+      '<div><span>PASSED:</span><span class="stat passed">' + summary.passed + '</span></div>\n' +
+      '<div><span>FAILED:</span><span class="stat failed">' + summary.failed + '</span></div>\n' +
+      '<div><span>SKIPPED:</span><span class="stat skipped">' + summary.skipped + '</span></div>\n' +
+      '\n</div>\n</div>\n\n<section id="specDetails">'
 
     return prefix
   }

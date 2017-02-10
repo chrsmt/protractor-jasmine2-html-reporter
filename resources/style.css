@@ -30,13 +30,28 @@ body {
     right: 8px;
 }
 #summaryStats {
-    background: #a7a8aa;
+    background: #cecece;
     color: #111;
     width: 100%;
     padding: 1em 2em;
+    text-align: center;
+}
+#summaryStats > div {
+    width: calc(90% / 6);  
+    display: inline-block;
+    border-left: 1px solid #aaa;
+    vertical-align: middle;   
+    text-align: center;
+}
+#summaryStats > div:first-child {
+    border-left: none;
+}
+#summaryStats > div > span {
+  display: inline-block;
+  vertical-align: middle;
 }
 #specDetails {
-    margin-top: 150px;
+    margin-top: 160px;
 }
 .suite {
     width: 96%;
@@ -100,15 +115,20 @@ body {
     border: 1px solid #bbb;
     box-shadow: 2px 2px 2px #888888;
 }
+.stat{
+    font-size: 1.33em;
+    font-weight: 600;
+    padding-left: .5em;
+}
 .total {
     color: #0d95bf;
 }
 .passed {
-    color: #2c9e08;
+    color: #15c524;
 }
 .skipped {
-    color: #f9c708;
+    color: #f7832b;
 }
 .failed {
-    color: #d00e0e;
+    color: #ff1414;
 }
