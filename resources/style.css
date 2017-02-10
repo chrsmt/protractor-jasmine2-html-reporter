@@ -37,7 +37,7 @@ body {
     text-align: center;
 }
 #summaryStats > div {
-    width: calc(90% / 6);  
+    width: calc(85% / 6);  
     display: inline-block;
     border-left: 1px solid #aaa;
     vertical-align: middle;   
