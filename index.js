@@ -2,28 +2,27 @@ var fs = require('fs')
 var mkdirp = require('mkdirp')
 var _ = require('lodash')
 var path = require('path')
-// var async = require('async')// not used
 var hat = require('hat')
-
-require('string.prototype.startswith')
+var fileUtilities = require('./fileUtilities')
+var formatDate = require('./formatDate')
 
 var UNDEFINED
 var exportObject = exports
-var reportDate
-var summaryStats = {
+var timestamp = new Date()
+var fileDate = formatDate(timestamp, { format: 'filename' })
+var titleDate = formatDate(timestamp, { format: 'title' })
+var summary = {
   suites: 0,
   specs: 0,
   passed: 0,
   failed: 0,
   skipped: 0,
-  disabled: 0
+  disabled: 0,
+  totalTime: 0
 }
 
-function sanitizeFilename (name) {
-  name = name.replace(/\s+/gi, '-') // Replace white space with dash
-  return name.replace(/[^a-zA-Z0-9\-]/gi, '') // Strip any special charactere
-}
-// function trim (str) { return str.replace(/^\s+/, '').replace(/\s+$/, '') }// not used
+require('string.prototype.startswith')
+
 function elapsed (start, end) { return (end - start) / 1000 }
 function isFailed (obj) { return obj.status === 'failed' }// can get rid of this by updating screenshot logic
 function parseDecimalRoundAndFixed (num, dec) {
@@ -40,22 +39,7 @@ function extend (dupe, obj) { // performs a shallow copy of all props of `obj` o
   return dupe
 }
 
-function escapeInvalidHtmlChars (str) {
-  return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-}
-
-function getQualifiedFilename (dir, filename, separator) {
-  if (dir && dir.substr(-1) !== separator && filename.substr(0) !== separator) {
-    dir += separator
-  }
-  return dir + filename
-}
-
+// GET RID OF THIS ONE?
 function log (str) {
   var con = global.console || console
   if (con && con.log) {
@@ -63,71 +47,17 @@ function log (str) {
   }
 }
 
-function rmdir (dir) {
-  try {
-    var list = fs.readdirSync(dir)
-    for (var i = 0; i < list.length; i++) {
-      var filename = path.join(dir, list[i])
-      var stat = fs.statSync(filename)
-
-      if (stat.isDirectory()) {
-                // rmdir recursively
-        rmdir(filename)
-      } else {
-                // rm fiilename
-        fs.unlinkSync(filename)
-      }
-    }
-    fs.rmdirSync(dir)
-  } catch (e) { log('problem trying to remove a folder:' + dir) }
-}
-
-function copyFile (source, target, cb) {
-  var cbCalled = false
-
-  var rd = fs.createReadStream(source)
-  rd.on('error', done)
-
-  var wr = fs.createWriteStream(target)
-  wr.on('error', done)
-  wr.on('close', function (ex) {
-    done()
-  })
-  rd.pipe(wr)
-
-  function done (err) {
-    if (!cbCalled) {
-      cb(err)
-      cbCalled = true
-    }
-  }
-}
-
 function moveCss (dir) {
   // move css file
   // var filepath = nodeJsPath.join(path, filename)
-  var cssFile = path.join(__dirname, 'style.css')
+  var cssFile = path.join(__dirname, 'resources', 'style.css')
   var reportCssFile = path.join(dir, 'style.css')
 
-  copyFile(cssFile, reportCssFile, function (err) {
+  fileUtilities.copyFile(cssFile, reportCssFile, function (err) {
     if (err) {
       throw new Error('Unable to copy CSS:', err)
     }
   })
-}
-
-// TODO: add arguments for formatting date/day/etc.
-function getReportDate () {
-  if (reportDate === undefined) {
-    reportDate = new Date()
-  }
-  return reportDate.getFullYear() + '-' +
-            ('0' + (reportDate.getMonth() + 1)).slice(-2) + '-' +
-            ('0' + reportDate.getDate()).slice(-2) + ' ' +
-            reportDate.getHours() + '' +
-            reportDate.getMinutes() + '' +
-            reportDate.getSeconds() + ',' +
-            reportDate.getMilliseconds()
 }
 
 function Jasmine2HTMLReporter (options) {
@@ -152,7 +82,9 @@ function Jasmine2HTMLReporter (options) {
   self.fileName = options.fileName === UNDEFINED ? 'htmlReport' : options.fileName
   self.cleanDestination = options.cleanDestination === UNDEFINED ? true : options.cleanDestination
   self.showPassed = options.showPassed === UNDEFINED ? true : options.showPassed
-  self.logo = options.logo === UNDEFINED ? false : options.logo
+  self.title = options.title === UNDEFINED ? 'Test Results' : options.title
+  self.titleColors = options.titleColors === UNDEFINED ? false : options.titleColors // handle missing options!!!
+  self.logo = options.logo === UNDEFINED ? false : options.logo // handle missing options!!!
 
   var suites = []
   var currentSuite = null
@@ -197,7 +129,7 @@ function Jasmine2HTMLReporter (options) {
     }
 
     if (self.fileNameDateSuffix) {
-      name += self.fileNameSeparator + getReportDate()
+      name += self.fileNameSeparator + fileDate
     }
 
     return name
@@ -210,7 +142,7 @@ function Jasmine2HTMLReporter (options) {
 
     // Delete previous reports unless cleanDirectory is false
     if (self.cleanDestination) {
-      rmdir(self.savePath)
+      fileUtilities.rmdir(self.savePath)
     }
   }
 
@@ -219,7 +151,8 @@ function Jasmine2HTMLReporter (options) {
     suite._startTime = new Date()
     suite._specs = []
     suite._suites = []
-    suite._failures = 0
+    suite._passed = 0
+    suite._failed = 0
     suite._skipped = 0
     suite._disabled = 0
     suite._parent = currentSuite
@@ -229,7 +162,7 @@ function Jasmine2HTMLReporter (options) {
       currentSuite._suites.push(suite)
     }
     currentSuite = suite
-    summaryStats.suites++
+    summary.suites++
   }
 
   self.specStarted = function (spec) {
@@ -249,19 +182,20 @@ function Jasmine2HTMLReporter (options) {
 
     switch (spec.status) {
       case 'passed':
-        summaryStats.passed++
+        spec._suite._passed++
+        summary.passed++
         break
       case 'pending':
         spec._suite._skipped++
-        summaryStats.skipped++
+        summary.skipped++
         break
       case 'disabled':
         spec._suite._disabled++
-        summaryStats.disabled++
+        summary.disabled++
         break
       case 'failed':
-        spec._suite._failures++
-        summaryStats.failed++
+        spec._suite._failed++
+        summary.failed++
         break
       default:
         throw new Error('Unable to handle spec status:', spec.status)
@@ -275,20 +209,18 @@ function Jasmine2HTMLReporter (options) {
       if (!self.fixedScreenshotName) {
         spec.screenshot = hat() + '.png'
       } else {
-        spec.screenshot = sanitizeFilename(spec.description) + '.png'
+        spec.screenshot = fileUtilities.sanitizeFilename(spec.description) + '.png'
       }
 
       browser.takeScreenshot().then(function (png) {
-        var screenshotPath = path.join(
-                    self.savePath,
-                    self.screenshotsFolder,
-                    spec.screenshot)
-
+        var screenshotPath = path.join(self.savePath, self.screenshotsFolder,
+          spec.screenshot)
         mkdirp(path.dirname(screenshotPath), function (err) {
           if (err) {
             throw new Error('Could not create directory for ' + screenshotPath)
           }
           writeScreenshot(png, screenshotPath)
+          console.log('this is the screenshot call')
         })
       })
     }
@@ -371,7 +303,7 @@ function Jasmine2HTMLReporter (options) {
       }
       return fileName
     } else {
-      return escapeInvalidHtmlChars(fullName)
+      return fileUtilities.escapeInvalidHtmlChars(fullName)
     }
   }
 
@@ -379,17 +311,23 @@ function Jasmine2HTMLReporter (options) {
     var stream = fs.createWriteStream(filename)
     stream.write(new Buffer(data, 'base64'))
     stream.end()
+    console.log('this is the function call for', filename)
   }
 
   function suiteAsHtml (suite) {
+    // calculate suite end time
+    suite._totalTime = elapsed(suite._startTime, suite._endTime)
+    summary.totalTime += suite._totalTime
+
     var html = '\n<article class="suite">\n'
     html += '<header>\n'
     html += '<h2>' + getFullyQualifiedSuiteName(suite) + ' - ' +
-      elapsed(suite._startTime, suite._endTime) + 's</h2>'
+       suite._totalTime + 's</h2>'
     html += '<ul class="stats">\n'
     html += '<li>Tests: <strong>' + suite._specs.length + '</strong></li>\n'
-    html += '<li>Skipped: <strong>' + suite._skipped + '</strong></li>\n'
-    html += '<li>Failures: <strong>' + suite._failures + '</strong></li>\n'
+    html += '<li>Passed: <strong><span class="passed">' + suite._passed + '</span></strong></li>\n'
+    html += '<li>Failed: <strong><span class="failed">' + suite._failed + '</span></strong></li>\n'
+    html += '<li>Skipped: <strong><span class="skipped">' + suite._skipped + '</span></strong></li>\n'
     html += '</ul>\n</header>\n'
 
     for (var i = 0; i < suite._specs.length; i++) {
@@ -416,7 +354,7 @@ function Jasmine2HTMLReporter (options) {
   }
   function specAsHtml (spec) {
     var html = '<div class="description">\n'
-    html += '<h3>' + escapeInvalidHtmlChars(spec.description) + ' - ' +
+    html += '<h3>' + fileUtilities.escapeInvalidHtmlChars(spec.description) + ' - ' +
       elapsed(spec._startTime, spec._endTime) + 's</h3>\n'
 
     if (spec.failedExpectations.length > 0 || spec.passedExpectations.length > 0) {
@@ -450,7 +388,8 @@ function Jasmine2HTMLReporter (options) {
 
     function phantomWrite (dir, filename, text) {
       // turn filename into a qualified path
-      filename = getQualifiedFilename(dir, filename, window.fs_path_separator)
+      filename = fileUtilities.getQualifiedFilename(dir, filename,
+        window.fs_path_separator)
       // write via a method injected by phantomjs-testrunner.js
       __phantom_writeFile(filename, text)
     }
@@ -483,23 +422,35 @@ function Jasmine2HTMLReporter (options) {
   }
 
   function writeHtmlPrefix () {
-    var prefix = '<!DOCTYPE html><html><head lang=en><meta charset=UTF-8>\n' +
-      '<title>Test Report -  ' + getReportDate() + '</title>\n' +
-      '<link rel="stylesheet" type="text/css" href="style.css"></head>\n' +
-      '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n'
-    prefix += '<body>\n<div id="summary">\n<div id="summaryTitle"><h1>Test Results - ' + getReportDate() + '</h1>'
-    // insert custom logo if provided in options
-    if (options.logo) {
-      prefix += '<img src="' + options.logo.url +
-          '" width="' + options.logo.width +
-          '" height="' + options.logo.height + '" />'
+    var titleColors = ''
+    var logo = ''
+
+    if (self.titleColors) {
+      titleColors = ' style="background: ' + options.titleColors.background + '; ' +
+        'color: ' + options.titleColors.text + ';"'
     }
-    prefix += '</div>\n<div id="summaryStats">SUITES:' + summaryStats.suites +
-      ' <strong>Total Tests: <span class=total>' + totalSpecsExecuted +
-      '</span></strong> [ Passed: <span class=passed>' + summaryStats.passed +
-      '</span> ] [ Skipped: <span class=skipped>' + summaryStats.skipped +
-      '</span> ] [ Failed: <span class=failed>' + summaryStats.failed +
-      '</span> ] </div>\n</div>\n\n<section id="specDetails">'
+
+    if (self.logo) {
+      logo = '<img src="' + options.logo.url +
+        '" width="' + options.logo.width +
+        '" height="' + options.logo.height + '" />'
+    }
+
+    var prefix = '<!DOCTYPE html><html><head lang=en><meta charset=UTF-8>\n' +
+      '<title>Test Report - ' + fileDate + '</title>\n' +
+      '<link rel="stylesheet" type="text/css" href="style.css"></head>\n' +
+      '<link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">\n' +
+      '<body>\n<div id="summary">\n<div id="summaryTitle"' + titleColors + '>' +
+      '<h1>' + self.title + '</h1>\n' +
+      '<span class="date">' + titleDate + '</span>' + logo + '</div>\n' +
+      '<div id="summaryStats">\n' +
+      '<div><span>TIME:</span><span class="stat">' + summary.totalTime.toFixed(3) + 's</span></div>\n' +
+      '<div><span>SUITES:</span><span class="stat">' + summary.suites + '</span></div>\n' +
+      '<div><span>TESTS:</span><span class="stat total">' + totalSpecsExecuted + '</span></div>\n' +
+      '<div><span>PASSED:</span><span class="stat passed">' + summary.passed + '</span></div>\n' +
+      '<div><span>FAILED:</span><span class="stat failed">' + summary.failed + '</span></div>\n' +
+      '<div><span>SKIPPED:</span><span class="stat skipped">' + summary.skipped + '</span></div>\n' +
+      '\n</div>\n</div>\n\n<section id="specDetails">'
 
     return prefix
   }
